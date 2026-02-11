@@ -175,25 +175,22 @@ export default function AccountManager({
 
     const now = dayjs();
     const currentDay = now.date();
-    const currentMonth = now.month();
-    const currentYear = now.year();
 
-    // Calculate closing date
+    // Calculate closing date for current month
     let closingDate = dayjs().date(account.creditClosingDay);
-    if (currentDay > account.creditClosingDay) {
-      closingDate = closingDate.add(1, 'month');
-    }
 
-    // Calculate due date
+    // Calculate due date for current month
     let dueDate = dayjs().date(account.creditDueDay);
-    
-    // Due date is typically in the next month after closing
+
+    // If due day is earlier in the month than closing day, 
+    // due date is actually in the next month
     if (account.creditDueDay <= account.creditClosingDay) {
       dueDate = dueDate.add(1, 'month');
     }
-    
-    // If we're past closing, both dates move to next cycle
-    if (currentDay > account.creditClosingDay) {
+
+    // Only move to next cycle if we're past BOTH dates
+    if (currentDay > account.creditClosingDay && currentDay > account.creditDueDay) {
+      closingDate = closingDate.add(1, 'month');
       dueDate = dueDate.add(1, 'month');
     }
 
@@ -209,8 +206,8 @@ export default function AccountManager({
     if (!dates) return false;
 
     const now = dayjs();
-    return now.isSame(dates.closingDate, 'day') || 
-           (now.isAfter(dates.closingDate, 'day') && now.isBefore(dates.dueDate, 'day'));
+    return now.isSame(dates.closingDate, 'day') ||
+      (now.isAfter(dates.closingDate, 'day') && now.isBefore(dates.dueDate, 'day'));
   };
 
   const handleBalanceSubmit = async (e: React.FormEvent) => {
@@ -542,11 +539,10 @@ Pré-pago: o valor é descontado ao transferir dinheiro para a conta; as transa�
                               router.push(`/accounts/${account.id}/history`);
                             }
                           }}
-                          className={`rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer ${
-                            inClosingPeriod 
-                              ? 'bg-yellow-50 dark:bg-yellow-900/20' 
-                              : 'bg-white dark:bg-gray-800'
-                          }`}
+                          className={`rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer ${inClosingPeriod
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20'
+                            : 'bg-white dark:bg-gray-800'
+                            }`}
                         >
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3">
@@ -605,23 +601,21 @@ Pré-pago: o valor é descontado ao transferir dinheiro para a conta; as transa�
                                 Atualizado em {new Date(balance.date).toLocaleString('pt-BR')}
                               </p>
                             )}
-                            
+
                             {/* Show credit card dates */}
                             {creditDates && (
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                                 <div className="flex justify-between text-xs mb-1">
                                   <span className="text-gray-600 dark:text-gray-400">Fechamento:</span>
-                                  <span className={`font-medium ${
-                                    inClosingPeriod ? 'text-yellow-700 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
-                                  }`}>
+                                  <span className={`font-medium ${inClosingPeriod ? 'text-yellow-700 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
+                                    }`}>
                                     {creditDates.closingDate.format('DD/MM/YYYY')}
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-xs">
                                   <span className="text-gray-600 dark:text-gray-400">Vencimento:</span>
-                                  <span className={`font-medium ${
-                                    inClosingPeriod ? 'text-yellow-700 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
-                                  }`}>
+                                  <span className={`font-medium ${inClosingPeriod ? 'text-yellow-700 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
+                                    }`}>
                                     {creditDates.dueDate.format('DD/MM/YYYY')}
                                   </span>
                                 </div>
