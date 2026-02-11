@@ -6,7 +6,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import { createInUserTimezone, getUserTimezone } from '@/lib/timezone';
+import utc from 'dayjs/plugin/utc';
 dayjs.extend(timezone);
+dayjs.extend(utc);
 
 import { useEffect, useState, useRef } from 'react';
 import { accountService } from '@/services/accountService';
@@ -163,6 +165,52 @@ export default function AccountManager({
     if (canManageAll) return true;
     if (canManageOwn && currentUserId && account.userId === currentUserId) return true;
     return false;
+  };
+
+  // Calculate closing and due dates for credit cards
+  const getCreditCardDates = (account: Account) => {
+    if (account.type !== 'CREDIT' || !account.creditClosingDay || !account.creditDueDay) {
+      return null;
+    }
+
+    const now = dayjs();
+    const currentDay = now.date();
+    const currentMonth = now.month();
+    const currentYear = now.year();
+
+    // Calculate closing date
+    let closingDate = dayjs().date(account.creditClosingDay);
+    if (currentDay > account.creditClosingDay) {
+      closingDate = closingDate.add(1, 'month');
+    }
+
+    // Calculate due date
+    let dueDate = dayjs().date(account.creditDueDay);
+    
+    // Due date is typically in the next month after closing
+    if (account.creditDueDay <= account.creditClosingDay) {
+      dueDate = dueDate.add(1, 'month');
+    }
+    
+    // If we're past closing, both dates move to next cycle
+    if (currentDay > account.creditClosingDay) {
+      dueDate = dueDate.add(1, 'month');
+    }
+
+    return {
+      closingDate,
+      dueDate
+    };
+  };
+
+  // Check if account is in closing period (should have yellow background)
+  const isInClosingPeriod = (account: Account): boolean => {
+    const dates = getCreditCardDates(account);
+    if (!dates) return false;
+
+    const now = dayjs();
+    return now.isSame(dates.closingDate, 'day') || 
+           (now.isAfter(dates.closingDate, 'day') && now.isBefore(dates.dueDate, 'day'));
   };
 
   const handleBalanceSubmit = async (e: React.FormEvent) => {
@@ -473,6 +521,8 @@ Pré-pago: o valor é descontado ao transferir dinheiro para a conta; as transa�
                     {typeAccounts.map((account) => {
                       const balance = balances[account.id];
                       const canEdit = canEditAccount(account);
+                      const creditDates = getCreditCardDates(account);
+                      const inClosingPeriod = isInClosingPeriod(account);
 
                       // Buscar nome do dono
                       let ownerFirstName = '';
@@ -492,7 +542,11 @@ Pré-pago: o valor é descontado ao transferir dinheiro para a conta; as transa�
                               router.push(`/accounts/${account.id}/history`);
                             }
                           }}
-                          className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                          className={`rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer ${
+                            inClosingPeriod 
+                              ? 'bg-yellow-50 dark:bg-yellow-900/20' 
+                              : 'bg-white dark:bg-gray-800'
+                          }`}
                         >
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3">
@@ -550,6 +604,28 @@ Pré-pago: o valor é descontado ao transferir dinheiro para a conta; as transa�
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 Atualizado em {new Date(balance.date).toLocaleString('pt-BR')}
                               </p>
+                            )}
+                            
+                            {/* Show credit card dates */}
+                            {creditDates && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex justify-between text-xs mb-1">
+                                  <span className="text-gray-600 dark:text-gray-400">Fechamento:</span>
+                                  <span className={`font-medium ${
+                                    inClosingPeriod ? 'text-yellow-700 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
+                                  }`}>
+                                    {creditDates.closingDate.format('DD/MM/YYYY')}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-gray-600 dark:text-gray-400">Vencimento:</span>
+                                  <span className={`font-medium ${
+                                    inClosingPeriod ? 'text-yellow-700 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
+                                  }`}>
+                                    {creditDates.dueDate.format('DD/MM/YYYY')}
+                                  </span>
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>

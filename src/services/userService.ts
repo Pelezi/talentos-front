@@ -1,14 +1,18 @@
 import apiClient from '@/lib/apiClient';
+import { User } from '@/types';
 
-export interface User {
+export interface ApiKey {
   id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber?: string;
-  firstAccess: boolean;
-  timezone?: string;
-  defaultHomepage?: string;
+  name: string;
+  keyPreview: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface ApiKeyCreated {
+  id: number;
+  key: string;
+  name: string;
   createdAt: string;
 }
 
@@ -26,5 +30,19 @@ export const userService = {
   async getCurrentUser(): Promise<User> {
     const response = await apiClient.get('/users/me');
     return response.data;
+  },
+
+  async createApiKey(name: string): Promise<ApiKeyCreated> {
+    const response = await apiClient.post('/users/api-keys', { name });
+    return response.data;
+  },
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    const response = await apiClient.get('/users/api-keys');
+    return response.data;
+  },
+
+  async deleteApiKey(id: number): Promise<void> {
+    await apiClient.delete(`/users/api-keys/${id}`);
   }
 };

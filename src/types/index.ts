@@ -65,6 +65,28 @@ export interface Transaction {
   updatedAt?: string;
 }
 
+export interface GroupPermission {
+  groupId: number;
+  groupName: string;
+  isOwner?: boolean;
+  role?: string | null;
+  permissions: {
+    canViewTransactions?: boolean;
+    canManageOwnTransactions?: boolean;
+    canManageGroupTransactions?: boolean;
+    canViewCategories?: boolean;
+    canManageCategories?: boolean;
+    canViewSubcategories?: boolean;
+    canManageSubcategories?: boolean;
+    canViewBudgets?: boolean;
+    canManageBudgets?: boolean;
+    canViewAccounts?: boolean;
+    canManageOwnAccounts?: boolean;
+    canManageGroupAccounts?: boolean;
+    canManageGroup?: boolean;
+  } | null;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -75,10 +97,13 @@ export interface User {
   firstAccess?: boolean;
   timezone?: string;
   defaultHomepage?: string;
+  isOwner?: boolean;
+  groups?: GroupPermission[];
 }
 
 export interface AuthResponse {
   token: string;
+  refreshToken: string;
   user: User;
 }
 
